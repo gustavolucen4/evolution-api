@@ -2344,21 +2344,36 @@ export class BaileysStartupService extends ChannelStartupService {
         const previewUrl = message['conversation'].match(/https?:\/\/[^\s<>()]+/i)?.[0];
         if (previewUrl) {
           try {
-            linkPreview = await getUrlInfo(previewUrl, {
+            const highQualityPreview = await getUrlInfo(previewUrl, {
               thumbnailWidth: 192,
               fetchOpts: { timeout: 10_000 },
               uploadImage: this.client.waUploadToServer,
             });
+
+            if (!highQualityPreview?.title) {
+              throw new Error('high-quality preview returned no metadata');
+            }
+
+            linkPreview = highQualityPreview;
           } catch (error) {
             this.logger.warn(`Unable to upload high-quality link preview for ${sender}: ${String(error)}`);
 
             try {
-              linkPreview = await getUrlInfo(previewUrl, {
+              const fallbackPreview = await getUrlInfo(previewUrl, {
                 thumbnailWidth: 192,
                 fetchOpts: { timeout: 10_000 },
               });
+
+              if (!fallbackPreview?.title) {
+                throw new Error('fallback preview returned no metadata');
+              }
+
+              linkPreview = fallbackPreview;
+              this.logger.info(`Fallback link preview generated for ${previewUrl}`);
             } catch (fallbackError) {
-              this.logger.warn(`Unable to generate link preview for ${sender}: ${String(fallbackError)}`);
+              this.logger.warn(
+                `Unable to generate link preview for ${sender} (${previewUrl}): ${String(fallbackError)}`,
+              );
             }
           }
         }
