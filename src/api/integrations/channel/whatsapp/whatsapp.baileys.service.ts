@@ -2350,7 +2350,16 @@ export class BaileysStartupService extends ChannelStartupService {
               uploadImage: this.client.waUploadToServer,
             });
           } catch (error) {
-            this.logger.warn(`Unable to generate link preview for ${sender}: ${String(error)}`);
+            this.logger.warn(`Unable to upload high-quality link preview for ${sender}: ${String(error)}`);
+
+            try {
+              linkPreview = await getUrlInfo(previewUrl, {
+                thumbnailWidth: 192,
+                fetchOpts: { timeout: 10_000 },
+              });
+            } catch (fallbackError) {
+              this.logger.warn(`Unable to generate link preview for ${sender}: ${String(fallbackError)}`);
+            }
           }
         }
       }
