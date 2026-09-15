@@ -2343,37 +2343,45 @@ export class BaileysStartupService extends ChannelStartupService {
       if (options?.linkPreview !== false) {
         const previewUrl = message['conversation'].match(/https?:\/\/[^\s<>()]+/i)?.[0];
         if (previewUrl) {
-          try {
-            const highQualityPreview = await getUrlInfo(previewUrl, {
-              thumbnailWidth: 192,
-              fetchOpts: { timeout: 10_000 },
-              uploadImage: this.client.waUploadToServer,
-            });
-
-            if (!highQualityPreview?.title) {
-              throw new Error('high-quality preview returned no metadata');
-            }
-
-            linkPreview = highQualityPreview;
-          } catch (error) {
-            this.logger.warn(`Unable to upload high-quality link preview for ${sender}: ${String(error)}`);
-
+          for (let attempt = 1; attempt <= 3 && !linkPreview; attempt++) {
             try {
-              const fallbackPreview = await getUrlInfo(previewUrl, {
+              const highQualityPreview = await getUrlInfo(previewUrl, {
                 thumbnailWidth: 192,
                 fetchOpts: { timeout: 10_000 },
+                uploadImage: this.client.waUploadToServer,
               });
 
-              if (!fallbackPreview?.title) {
-                throw new Error('fallback preview returned no metadata');
+              if (!highQualityPreview?.title) {
+                throw new Error('high-quality preview returned no metadata');
               }
 
-              linkPreview = fallbackPreview;
-              this.logger.info(`Fallback link preview generated for ${previewUrl}`);
-            } catch (fallbackError) {
+              linkPreview = highQualityPreview;
+            } catch (error) {
               this.logger.warn(
-                `Unable to generate link preview for ${sender} (${previewUrl}): ${String(fallbackError)}`,
+                `Unable to upload high-quality link preview for ${sender} (attempt ${attempt}): ${String(error)}`,
               );
+
+              try {
+                const fallbackPreview = await getUrlInfo(previewUrl, {
+                  thumbnailWidth: 192,
+                  fetchOpts: { timeout: 10_000 },
+                });
+
+                if (!fallbackPreview?.title) {
+                  throw new Error('fallback preview returned no metadata');
+                }
+
+                linkPreview = fallbackPreview;
+                this.logger.info(`Fallback link preview generated for ${previewUrl}`);
+              } catch (fallbackError) {
+                this.logger.warn(
+                  `Unable to generate link preview for ${sender} (${previewUrl}, attempt ${attempt}): ${String(fallbackError)}`,
+                );
+              }
+            }
+
+            if (!linkPreview && attempt < 3) {
+              await delay(attempt * 500);
             }
           }
         }
