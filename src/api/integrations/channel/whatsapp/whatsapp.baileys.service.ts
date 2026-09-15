@@ -109,6 +109,7 @@ import makeWASocket, {
   GetCatalogOptions,
   getContentType,
   getDevice,
+  getUrlInfo,
   GroupMetadata,
   isJidBroadcast,
   isJidGroup,
@@ -2338,7 +2339,20 @@ export class BaileysStartupService extends ChannelStartupService {
         }
       }
 
-      const linkPreview = options?.linkPreview != false ? undefined : false;
+      let linkPreview: any = false;
+      if (options?.linkPreview !== false) {
+        const previewUrl = message['conversation'].match(/https?:\/\/[^\s<>()]+/i)?.[0];
+        if (previewUrl) {
+          try {
+            linkPreview = await getUrlInfo(previewUrl, {
+              thumbnailWidth: 192,
+              fetchOpts: { timeout: 10_000 },
+            });
+          } catch (error) {
+            this.logger.warn(`Unable to generate link preview for ${sender}: ${String(error)}`);
+          }
+        }
+      }
 
       let quoted: WAMessage;
 
