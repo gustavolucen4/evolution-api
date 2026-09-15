@@ -10,6 +10,7 @@ export class Options {
   presence?: WAPresence;
   quoted?: Quoted;
   linkPreview?: boolean;
+  externalAdReply?: boolean;
   encoding?: boolean;
   mentionsEveryOne?: boolean;
   mentioned?: string[];
@@ -41,6 +42,7 @@ export class Metadata {
   delay?: number;
   quoted?: Quoted;
   linkPreview?: boolean;
+  externalAdReply?: boolean;
   mentionsEveryOne?: boolean;
   mentioned?: string[];
   encoding?: boolean;

@@ -2340,14 +2340,44 @@ export class BaileysStartupService extends ChannelStartupService {
       }
 
       let linkPreview: any = false;
-      let previewUrl: string | undefined;
+      const previewUrl = message['conversation'].match(/https?:\/\/[^\s<>()]+/i)?.[0];
+      let externalAdReplyGenerated = false;
       const hasPreviewMetadata = (preview: any) =>
         Boolean(preview?.title && (preview?.jpegThumbnail?.length || preview?.highQualityThumbnail?.directPath));
       const hasSentPreviewMetadata = (preview: any) =>
         Boolean(preview?.title && (preview?.jpegThumbnail?.length || preview?.thumbnailDirectPath));
 
-      if (options?.linkPreview !== false) {
-        previewUrl = message['conversation'].match(/https?:\/\/[^\s<>()]+/i)?.[0];
+      if (options?.externalAdReply && previewUrl) {
+        try {
+          const adReplyPreview = await getUrlInfo(previewUrl, {
+            thumbnailWidth: 600,
+            fetchOpts: { timeout: 10_000 },
+          });
+
+          if (!adReplyPreview?.title || !adReplyPreview.jpegThumbnail?.length) {
+            throw new Error('external ad reply preview returned incomplete metadata');
+          }
+
+          message['contextInfo'] = {
+            ...message['contextInfo'],
+            externalAdReply: {
+              title: adReplyPreview.title,
+              body: adReplyPreview.description || '',
+              thumbnail: adReplyPreview.jpegThumbnail,
+              mediaUrl: previewUrl,
+              sourceUrl: previewUrl,
+              renderLargerThumbnail: true,
+              showAdAttribution: false,
+            },
+          };
+          externalAdReplyGenerated = true;
+          this.logger.info(`External ad reply generated for ${previewUrl}`);
+        } catch (error) {
+          this.logger.warn(`Unable to generate external ad reply for ${previewUrl}: ${String(error)}`);
+        }
+      }
+
+      if (options?.linkPreview !== false && !externalAdReplyGenerated) {
         if (previewUrl) {
           for (let attempt = 1; attempt <= 3; attempt++) {
             try {
@@ -2702,6 +2732,7 @@ export class BaileysStartupService extends ChannelStartupService {
         presence: 'composing',
         quoted: data?.quoted,
         linkPreview: data?.linkPreview,
+        externalAdReply: data?.externalAdReply,
         mentionsEveryOne: data?.mentionsEveryOne,
         mentioned: data?.mentioned,
       },
