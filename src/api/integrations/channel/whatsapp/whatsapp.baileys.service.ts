@@ -2340,8 +2340,11 @@ export class BaileysStartupService extends ChannelStartupService {
       }
 
       let linkPreview: any = false;
+      let previewUrl: string | undefined;
+      const hasPreviewMetadata = (preview: any) => Boolean(preview?.title && preview?.jpegThumbnail?.length);
+
       if (options?.linkPreview !== false) {
-        const previewUrl = message['conversation'].match(/https?:\/\/[^\s<>()]+/i)?.[0];
+        previewUrl = message['conversation'].match(/https?:\/\/[^\s<>()]+/i)?.[0];
         if (previewUrl) {
           for (let attempt = 1; attempt <= 3 && !linkPreview; attempt++) {
             try {
@@ -2351,8 +2354,8 @@ export class BaileysStartupService extends ChannelStartupService {
                 uploadImage: this.client.waUploadToServer,
               });
 
-              if (!highQualityPreview?.title) {
-                throw new Error('high-quality preview returned no metadata');
+              if (!hasPreviewMetadata(highQualityPreview)) {
+                throw new Error('high-quality preview returned incomplete metadata');
               }
 
               linkPreview = highQualityPreview;
@@ -2367,8 +2370,8 @@ export class BaileysStartupService extends ChannelStartupService {
                   fetchOpts: { timeout: 10_000 },
                 });
 
-                if (!fallbackPreview?.title) {
-                  throw new Error('fallback preview returned no metadata');
+                if (!hasPreviewMetadata(fallbackPreview)) {
+                  throw new Error('fallback preview returned incomplete metadata');
                 }
 
                 linkPreview = fallbackPreview;
@@ -2467,6 +2470,10 @@ export class BaileysStartupService extends ChannelStartupService {
 
       if (Long.isLong(messageSent?.messageTimestamp)) {
         messageSent.messageTimestamp = messageSent.messageTimestamp?.toNumber();
+      }
+
+      if (previewUrl && !hasPreviewMetadata(messageSent?.message?.extendedTextMessage)) {
+        this.logger.warn(`Outgoing message has no link preview metadata for ${previewUrl}`);
       }
 
       const messageRaw = this.prepareMessage(messageSent);
