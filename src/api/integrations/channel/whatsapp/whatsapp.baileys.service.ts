@@ -2347,6 +2347,7 @@ export class BaileysStartupService extends ChannelStartupService {
             linkPreview = await getUrlInfo(previewUrl, {
               thumbnailWidth: 192,
               fetchOpts: { timeout: 10_000 },
+              uploadImage: this.client.waUploadToServer,
             });
           } catch (error) {
             this.logger.warn(`Unable to generate link preview for ${sender}: ${String(error)}`);
