@@ -2341,7 +2341,10 @@ export class BaileysStartupService extends ChannelStartupService {
 
       let linkPreview: any = false;
       let previewUrl: string | undefined;
-      const hasPreviewMetadata = (preview: any) => Boolean(preview?.title && preview?.jpegThumbnail?.length);
+      const hasPreviewMetadata = (preview: any) =>
+        Boolean(preview?.title && (preview?.jpegThumbnail?.length || preview?.highQualityThumbnail?.directPath));
+      const hasSentPreviewMetadata = (preview: any) =>
+        Boolean(preview?.title && (preview?.jpegThumbnail?.length || preview?.thumbnailDirectPath));
 
       if (options?.linkPreview !== false) {
         previewUrl = message['conversation'].match(/https?:\/\/[^\s<>()]+/i)?.[0];
@@ -2359,6 +2362,7 @@ export class BaileysStartupService extends ChannelStartupService {
               }
 
               linkPreview = highQualityPreview;
+              this.logger.info(`High-quality link preview generated for ${previewUrl}`);
               break;
             } catch (error) {
               this.logger.warn(
@@ -2475,7 +2479,7 @@ export class BaileysStartupService extends ChannelStartupService {
         messageSent.messageTimestamp = messageSent.messageTimestamp?.toNumber();
       }
 
-      if (previewUrl && !hasPreviewMetadata(messageSent?.message?.extendedTextMessage)) {
+      if (previewUrl && !hasSentPreviewMetadata(messageSent?.message?.extendedTextMessage)) {
         this.logger.warn(`Outgoing message has no link preview metadata for ${previewUrl}`);
       }
 
