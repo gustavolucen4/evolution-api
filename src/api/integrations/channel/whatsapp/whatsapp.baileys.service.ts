@@ -2364,6 +2364,7 @@ export class BaileysStartupService extends ChannelStartupService {
               title: adReplyPreview.title,
               body: adReplyPreview.description || '',
               thumbnail: adReplyPreview.jpegThumbnail,
+              mediaType: 1,
               mediaUrl: previewUrl,
               sourceUrl: previewUrl,
               renderLargerThumbnail: true,
